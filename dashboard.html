@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Celesticate Dash</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="dash-style.css">
+
+</head>
+<body>
+
+    <!-- ========================= -->
+    <!-- HEADER -->
+    <!-- ========================= -->
+
+    <header class="dash-header">
+
+        <div class="brand">
+
+            <div class="brand-mark">
+                <svg viewBox="0 0 30 30" fill="none">
+                    <circle cx="15" cy="15" r="2.5" fill="#E8E9F5" />
+                    <circle
+                        class="orbit-ring"
+                        cx="15" cy="15" r="11"
+                        stroke="#7462B0"
+                        stroke-width="1"
+                        stroke-dasharray="2 5"
+                        fill="none"
+                    />
+                </svg>
+            </div>
+
+            <div class="brand-name">
+                CELESTICATE <span>DASH</span>
+            </div>
+
+        </div>
+
+
+        <nav class="dash-nav">
+
+            <button
+                class="nav-item active"
+                id="navDashboard"
+                onclick="switchView('dashboard')"
+            >
+                Dashboard
+            </button>
+
+            <button
+                class="nav-item"
+                id="navOrders"
+                onclick="switchView('orders')"
+            >
+                Orders
+            </button>
+
+            <button
+                class="nav-item"
+                disabled
+                title="Coming in a later phase"
+            >
+                Settings
+            </button>
+
+        </nav>
+
+
+        <div class="header-summary">
+            <strong id="orderCountSummary">— </strong> Orders
+            <button class="nav-item" id="btnSignOut" onclick="signOut()" style="display:none; margin-left:12px;">Sign out</button>
+        </div>
+
+    </header>
+
+
+    <div class="dash-shell">
+
+        <!-- ========================= -->
+        <!-- DASHBOARD VIEW -->
+        <!-- ========================= -->
+
+        <section class="dash-view active" id="viewDashboard">
+
+            <div class="priority-heading">
+
+                <h1>Priority</h1>
+
+                <p>Which order to look at first.</p>
+
+            </div>
+
+
+            <!-- LOADING / ERROR STATES (dormant until Phase 3B wires Supabase) -->
+
+            <div class="state-panel" id="loadingState">
+
+                <div class="loading-dot-orbit">
+                    <span></span><span></span><span></span>
+                </div>
+
+                <p class="state-title">Loading orders...</p>
+
+            </div>
+
+            <div class="state-panel" id="loginState">
+
+                <p class="state-title">Sign in to Celesticate Dash</p>
+
+                <input class="login-field" id="loginEmail" type="email" placeholder="Email" autocomplete="username">
+
+                <input class="login-field" id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+
+                <button class="action-btn" id="btnSignIn" onclick="signIn()">Sign in</button>
+
+                <p class="action-error" id="loginError"></p>
+
+            </div>
+
+            <div class="state-panel is-error" id="errorState">
+
+                <p class="state-title">Couldn't load orders.</p>
+
+                <p id="errorDetail">Check the browser console for details.</p>
+
+            </div>
+
+            <div class="state-panel" id="emptyOrdersState">
+
+                <p class="state-title">No orders yet.</p>
+
+                <p>Submitted projects will appear here.</p>
+
+            </div>
+
+
+            <!--
+                Wrapper used only to hide/show all three priority
+                sections together while orders are loading, or if
+                the load fails/returns nothing — the sections
+                themselves are unchanged.
+            -->
+
+            <div id="prioritySections">
+
+            <!-- 100% PAID -->
+
+            <div class="order-section" id="sectionFullPaid">
+
+                <div class="order-section-header">
+                    <h2>Fully paid</h2>
+                    <span class="order-section-count mono" id="fullPaidCount">0</span>
+                </div>
+
+                <div class="order-grid" id="fullPaidGrid">
+                </div>
+
+                <p class="empty-inline" id="fullPaidEmpty" style="display:none;">
+                    No fully paid orders yet.
+                </p>
+
+            </div>
+
+
+            <!-- 50% PAID -->
+
+            <div class="order-section" id="sectionHalfPaid">
+
+                <div class="order-section-header">
+                    <h2>Half paid</h2>
+                    <span class="order-section-count mono" id="halfPaidCount">0</span>
+                </div>
+
+                <div class="paid-group">
+
+                    <div class="order-subsection" id="halfPersonalGroup">
+
+                        <p class="order-subsection-label">Personal</p>
+
+                        <div class="order-grid" id="halfPersonalGrid">
+                        </div>
+
+                        <p class="empty-inline" id="halfPersonalEmpty" style="display:none;">
+                            No personal orders yet.
+                        </p>
+
+                    </div>
+
+
+                    <div class="order-subsection" id="halfBusinessGroup">
+
+                        <p class="order-subsection-label">Business</p>
+
+                        <div class="order-grid" id="halfBusinessGrid">
+                        </div>
+
+                        <p class="empty-inline" id="halfBusinessEmpty">No business orders yet.</p>
+
+                    </div>
+
+
+                    <div class="order-subsection" id="halfOrgGroup">
+
+                        <p class="order-subsection-label">Organization</p>
+
+                        <div class="order-grid" id="halfOrgGrid">
+                        </div>
+
+                        <p class="empty-inline" id="halfOrgEmpty">No organization orders yet.</p>
+
+                    </div>
+
+                    <!--
+                        "Other" subsection is created dynamically by
+                        dash-script.js, only if at least one 50%-paid
+                        order has a website type outside Personal /
+                        Business / Organization — so it never appears
+                        empty or unused.
+                    -->
+
+                </div>
+
+            </div>
+
+
+            <!-- PENDING -->
+
+            <div class="order-section" id="sectionPending">
+
+                <div class="order-section-header">
+                    <h2>Needs review</h2>
+                    <span class="order-section-count mono" id="pendingCount">0</span>
+                </div>
+
+                <div class="order-grid" id="pendingGrid">
+                </div>
+
+                <p class="empty-inline" id="pendingEmpty" style="display:none;">
+                    No orders need review.
+                </p>
+
+            </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ========================= -->
+        <!-- ORDERS VIEW (flat, by submission date) -->
+        <!-- ========================= -->
+
+        <section class="dash-view" id="viewOrders">
+
+            <div class="priority-heading">
+
+                <h1 id="ordersHeading">Active queue</h1>
+
+                <p id="ordersSubheading">Active orders in queue order. Needs review last.</p>
+
+            </div>
+
+            <div class="orders-tabs" id="ordersTabs">
+                <button class="active" data-tab="queue" onclick="setOrdersTab('queue')">Queue</button>
+                <button data-tab="recent" onclick="setOrdersTab('recent')">Recent</button>
+                <button data-tab="history" onclick="setOrdersTab('history')">History</button>
+            </div>
+
+            <div class="order-grid" id="recentGrid">
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- ORDER DETAIL VIEW -->
+    <!-- ========================= -->
+
+    <div class="detail-overlay" id="detailOverlay">
+
+        <div class="detail-panel">
+
+            <button class="detail-back" onclick="closeDetail()">
+                ← Back
+            </button>
+
+            <div class="detail-head">
+
+                <div>
+                    <h2 id="detailClientName">Client Name</h2>
+                    <p class="order-card-id mono" id="detailOrderId">#000104</p>
+                </div>
+
+            </div>
+
+            <div class="detail-actions" id="detailActions">
+
+                <div class="detail-action-row" id="actionMain">
+                    <button class="action-btn" id="btnFinish" onclick="finishOrder()">Finish</button>
+                    <button class="action-btn is-quiet" id="btnCancel" onclick="askCancel()">Cancel order</button>
+                </div>
+
+                <div class="detail-action-row" id="actionConfirm" style="display:none;">
+                    <p>Cancelling moves this order to History. It is not deleted.</p>
+                    <button class="action-btn is-quiet" id="btnConfirmCancel" onclick="confirmCancel()">Yes, cancel order</button>
+                    <button class="action-btn" id="btnKeep" onclick="dismissCancel()">Keep order</button>
+                </div>
+
+                <p class="action-error" id="actionError"></p>
+
+            </div>
+
+            <div class="detail-sections">
+
+                <div class="detail-block">
+
+                    <h3>Order information</h3>
+
+                    <div class="detail-row">
+                        <span>Submitted</span>
+                        <strong id="detailSubmitted">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Priority</span>
+                        <strong id="detailPriority">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Payment status</span>
+                        <strong id="detailPaymentStatus">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Order status</span>
+                        <strong id="detailOrderStatus">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Review reason</span>
+                        <strong id="detailReviewReason">None</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Client</h3>
+
+                    <div class="detail-row">
+                        <span>Full name</span>
+                        <strong id="detailFullName">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Social media</span>
+                        <strong id="detailSocial">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Email</span>
+                        <strong id="detailEmail">Not provided</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Project</h3>
+
+                    <div class="detail-row">
+                        <span>Business / project name</span>
+                        <strong id="detailProjectName">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Website type</span>
+                        <strong id="detailWebsiteType">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Goal</span>
+                        <strong id="detailGoal">—</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Content &amp; visual</h3>
+
+                    <div class="detail-row">
+                        <span>Content status</span>
+                        <strong id="detailContentStatus">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Style</span>
+                        <strong id="detailStyle">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Colors</span>
+                        <strong id="detailColors">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Logo</span>
+                        <strong id="detailLogo">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Images</span>
+                        <strong id="detailImages">Not provided</strong>
+                    </div>
+
+                    <div class="detail-links" id="detailLinks"></div>
+
+                    <div class="detail-thumbs" id="detailThumbs"></div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Custom requests</h3>
+
+                    <div class="detail-row">
+                        <span>Background</span>
+                        <strong id="detailBackground">Not requested</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Animation</span>
+                        <strong id="detailAnimation">Not requested</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Other</span>
+                        <strong id="detailOther">Not requested</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Additional</h3>
+
+                    <div class="detail-row">
+                        <span>Priorities</span>
+                        <strong id="detailPriorities">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Avoid</span>
+                        <strong id="detailAvoid">—</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Payment</h3>
+
+                    <div class="detail-row">
+                        <span>Recommended</span>
+                        <strong id="detailRecommended">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Selected</span>
+                        <strong id="detailSelected">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Method</span>
+                        <strong id="detailMethod">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Verification</span>
+                        <strong id="detailStatus">—</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="detail-block">
+
+                    <h3>Pricing</h3>
+
+                    <div class="detail-row">
+                        <span>Base price</span>
+                        <strong id="detailBase">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Additional / custom</span>
+                        <strong id="detailCustomCost">—</strong>
+                    </div>
+
+                    <div class="detail-row">
+                        <span>Total</span>
+                        <strong id="detailTotal">—</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="dash-script.js"></script>
+
+</body>
+</html>
